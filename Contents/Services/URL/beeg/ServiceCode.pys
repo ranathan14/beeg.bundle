@@ -1,0 +1,69 @@
+HTTP_HEADERS = {
+	'User-Agent': 'AppleCoreMedia/1.0.0.12D78 (Macintosh; U; Intel Mac OS X 10_8_3; en_us)',
+	'Referer': 'http://staticloads.com/players/jw.5.7.1896/player.swf'
+}
+
+THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
+RE_VIDEO_URL = Regex("'file': '([^']+)'")
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url.split('?')[0].rstrip('/')
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+	html = HTML.ElementFromURL(url)
+
+	title = html.xpath('//title/text()')[0].strip()
+	summary = html.xpath('//meta[@name="description"]/@content')[0].strip()
+	thumb = THUMB_URL % url.split('/')[-1]
+
+	return VideoClipObject(
+		title = title,
+		summary = summary,
+		thumb = thumb,
+		content_rating = 'X'
+	)
+
+####################################################################################################
+def MediaObjectsForURL(url):
+
+	return [
+		MediaObject(
+			container = Container.MP4,
+			video_codec = VideoCodec.H264,
+			video_resolution = '480',
+			audio_codec = AudioCodec.AAC,
+			audio_channels = 2,
+			optimized_for_streaming = True,
+			parts = [
+				PartObject(
+					key = Callback(PlayVideo, url=url)
+				)
+			]
+		)
+	]
+
+####################################################################################################
+@indirect
+def PlayVideo(url):
+
+	data = HTTP.Request(url).content
+	video = RE_VIDEO_URL.search(data)
+
+	if video:
+		oc = ObjectContainer(http_headers=HTTP_HEADERS)
+
+		oc.add(VideoClipObject(
+			items = [
+				MediaObject(
+					parts = [PartObject(key=video.group(1))]
+				)
+			]
+		))
+
+		return oc
+
+	raise Ex.MediaNotAvailable

@@ -1,77 +1,88 @@
-import re
-
-NAME = 'beeg.com'
+NAME = 'beeg'
 BASE_URL = 'http://beeg.com'
+SECTION_URL = 'http://beeg.com/section/%s/%%d/'
+TAG_URL = 'http://beeg.com/tag/%s/%%d/'
+THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
+
 ART = 'art-default.jpg'
-ICON = 'icon-default.png'
-ICON_MORE = 'icon-more.png'
+ICON = 'icon-default.jpg'
+
+RE_VIDEO_IDS = Regex('var tumbid.*=.*\[(.+?)\];')
+RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
 
 ####################################################################################################
 def Start():
 
-	Plugin.AddPrefixHandler('/video/beeg', MainMenu, NAME, ICON, ART)
 	Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
-	Plugin.AddViewGroup('InfoList', viewMode='InfoList', mediaType='items')
 
-	MediaContainer.art = R(ART)
-	MediaContainer.title1 = NAME
-	MediaContainer.viewGroup = 'InfoList'
-	MediaContainer.userAgent = ''
-	DirectoryItem.thumb = R(ICON)
+	ObjectContainer.art = R(ART)
+	ObjectContainer.title1 = NAME
+	DirectoryObject.thumb = R(ICON)
 
-	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:11.0) Gecko/20100101 Firefox/11.0'
+	HTTP.CacheTime = CACHE_1HOUR * 4
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:21.0) Gecko/20100101 Firefox/21.0'
 
-###################################################################################################
+####################################################################################################
+@handler('/video/beeg', NAME, thumb=ICON, art=ART)
 def MainMenu():
 
-	dir = MediaContainer()
+	oc = ObjectContainer(view_group='List')
 
-	for category in HTML.ElementFromURL(BASE_URL).xpath('//*[@class="menu" or @class="menu-extra"]//a[contains(@href, "http://")]'):
-		url = category.get('href')
-		try:
-			title = category.xpath('.//span')[0].text.strip()
-		except:
-			title = category.text.strip()
+	oc.add(DirectoryObject(
+		key = Callback(Videos, title='Browse All Videos', url=SECTION_URL % 'home'),
+		title = 'Browse All Videos'
+	))
 
-		if title == 'Home':
-			title = 'All'
+	oc.add(DirectoryObject(
+		key = Callback(Tags, title='Browse Videos by Tag'),
+		title = 'Browse Videos by Tag'
+	))
 
-		dir.Append(Function(DirectoryItem(Videos, title=title), title=title, url=url))
-
-	return dir
+	return oc
 
 ####################################################################################################
-def Videos(sender, title, url, page=1):
+@route('/video/beeg/videos', page=int)
+def Videos(title, url, page=1):
 
-	dir = MediaContainer(title2=title, httpCookies=HTTP.CookiesForURL(BASE_URL))
-	page_url = '%s%d/' % (url, page)
-	html = HTML.ElementFromURL(page_url)
+	oc = ObjectContainer(title2=title, view_group='List')
+	page = HTTP.Request(url % page).content
 
-	for video in html.xpath('//div[@id="thumbs"]/a'):
-		video_url = video.get('href')
-		video_title = video.xpath('./img')[0].get('alt').strip()
-		video_thumb = video.xpath('./img')[0].get('src').replace('192x144', '240x180')
+	ids = RE_VIDEO_IDS.search(page).group(1).split(",")[0:50]
+	titles = RE_TITLES.search(page).group(1).strip("'").split("','")[0:50]
 
-		dir.Append(Function(VideoItem(PlayVideo, title=video_title, thumb=Function(GetThumb, url=video_thumb)), url=video_url))
+	for i, id in enumerate(ids):
+		oc.add(VideoClipObject(
+			url = '%s/%s' % (BASE_URL, id),
+			title = titles[i].decode('string_escape'),
+			thumb = Callback(GetThumb, url=THUMB_URL % id)
+		))
 
-	if (len(html.xpath('//div[@id="pagerBox"]/a')) > page):
-		dir.Append(Function(DirectoryItem(Videos, title='Next page...', thumb=R(ICON_MORE)), title=title, url=url, page=page+1))
-
-	return dir
+	return oc
 
 ####################################################################################################
-def PlayVideo(sender, url):
+@route('/video/beeg/tags')
+def Tags(title):
 
-	page = HTTP.Request(url).content
-	video_url = re.search("'file':(\s)*'(?P<video_url>[^']+)'", page).group('video_url')
-	return Redirect(video_url)
+	oc = ObjectContainer(title2=title, view_group='List')
+
+	for tag in HTML.ElementFromURL(BASE_URL).xpath('//a[contains(@href, "/tag/")]'):
+		title = tag.xpath('./text()')[0]
+		href = tag.xpath('./@href')[0].split('/')[-1].replace('%', '%%')
+
+		oc.add(DirectoryObject(
+			key = Callback(Videos, title=title, url=TAG_URL % href),
+			title = title
+		))
+
+	oc.objects.sort(key=lambda obj: obj.title)
+
+	return oc
 
 ####################################################################################################
 def GetThumb(url):
 
 	try:
-		data = HTTP.Request(url, cacheTime=CACHE_1MONTH, sleep=1).content
+		data = HTTP.Request(url, cacheTime=CACHE_1MONTH, sleep=0.5).content
 		return DataObject(data, 'image/jpeg')
 	except:
 		pass

@@ -1,9 +1,10 @@
 HTTP_HEADERS = {
-	'User-Agent': 'AppleCoreMedia/1.0.0.12D78 (Macintosh; U; Intel Mac OS X 10_8_3; en_us)',
+    'User-Agent': 'AppleCoreMedia/1.0.0.12D78 (Macintosh; U; Intel Mac OS X 10_8_3; en_us)',
 	'Referer': 'http://staticloads.com/players/jw.5.7.1896/player.swf'
 }
 
 THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
+THUMB_URL_ORIG = 'http://cdn.anythumb.com/236x177/%s.jpg'
 RE_VIDEO_URL = Regex("'file': '([^']+)'")
 
 ####################################################################################################
@@ -18,12 +19,13 @@ def MetadataObjectForURL(url):
 
 	title = html.xpath('//title/text()')[0].strip()
 	summary = html.xpath('//meta[@name="description"]/@content')[0].strip()
-	thumb = THUMB_URL % url.split('/')[-1]
+	thumb_1 = THUMB_URL % url.split('/')[-1]
+	thumb_2 = THUMB_URL_ORIG % url.split('/')[-1]
 
 	return VideoClipObject(
 		title = title,
 		summary = summary,
-		thumb = thumb,
+		thumb = Resource.ContentsOfURLWithFallback([thumb_1, thumb_2], fallback='icon-default.jpg'),
 		content_rating = 'X'
 	)
 

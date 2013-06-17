@@ -3,6 +3,7 @@ BASE_URL = 'http://beeg.com'
 SECTION_URL = 'http://beeg.com/section/%s/%%d/'
 TAG_URL = 'http://beeg.com/tag/%s/%%d/'
 THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
+THUMB_URL_ORIG = 'http://cdn.anythumb.com/236x177/%s.jpg'
 
 ART = 'art-default.jpg'
 ICON = 'icon-default.jpg'
@@ -13,7 +14,7 @@ RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
 ####################################################################################################
 def Start():
 
-	Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
+    Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
 
 	ObjectContainer.art = R(ART)
 	ObjectContainer.title1 = NAME
@@ -54,7 +55,7 @@ def Videos(title, url, page=1):
 		oc.add(VideoClipObject(
 			url = '%s/%s' % (BASE_URL, id),
 			title = titles[i].decode('string_escape'),
-			thumb = Callback(GetThumb, url=THUMB_URL % id)
+			thumb = Callback(GetThumb, id=id)
 		))
 
 	return oc
@@ -79,12 +80,16 @@ def Tags(title):
 	return oc
 
 ####################################################################################################
-def GetThumb(url):
+def GetThumb(id):
 
 	try:
-		data = HTTP.Request(url, cacheTime=CACHE_1MONTH, sleep=0.5).content
+		data = HTTP.Request(THUMB_URL % id, cacheTime=CACHE_1MONTH, sleep=0.5).content
 		return DataObject(data, 'image/jpeg')
 	except:
-		pass
+		try:
+			data = HTTP.Request(THUMB_URL_ORIG % id, cacheTime=CACHE_1MONTH, sleep=0.5).content
+			return DataObject(data, 'image/jpeg')
+		except:
+			pass
 
 	return Redirect(R(ICON))

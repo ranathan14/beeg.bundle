@@ -14,7 +14,7 @@ RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
 ####################################################################################################
 def Start():
 
-    Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
+	Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
 
 	ObjectContainer.art = R(ART)
 	ObjectContainer.title1 = NAME

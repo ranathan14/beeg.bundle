@@ -39,7 +39,7 @@ def MediaObjectsForURL(url):
 			video_resolution = '480',
 			audio_codec = AudioCodec.AAC,
 			audio_channels = 2,
-			optimized_for_streaming = True,
+			optimized_for_streaming = True if Client.Product not in ['Plex Web'] else False,
 			parts = [
 				PartObject(
 					key = Callback(PlayVideo, url=url)

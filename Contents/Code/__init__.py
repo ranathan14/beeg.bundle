@@ -14,20 +14,18 @@ RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
 ####################################################################################################
 def Start():
 
-	Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
-
 	ObjectContainer.art = R(ART)
 	ObjectContainer.title1 = NAME
 	DirectoryObject.thumb = R(ICON)
 
 	HTTP.CacheTime = CACHE_1HOUR * 4
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:21.0) Gecko/20100101 Firefox/21.0'
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25'
 
 ####################################################################################################
 @handler('/video/beeg', NAME, thumb=ICON, art=ART)
 def MainMenu():
 
-	oc = ObjectContainer(view_group='List')
+	oc = ObjectContainer()
 
 	oc.add(DirectoryObject(
 		key = Callback(Videos, title='Browse All Videos', url=SECTION_URL % 'home'),
@@ -45,7 +43,7 @@ def MainMenu():
 @route('/video/beeg/videos', page=int)
 def Videos(title, url, page=1):
 
-	oc = ObjectContainer(title2=title, view_group='List')
+	oc = ObjectContainer(title2=title)
 	page = HTTP.Request(url % page).content
 
 	ids = RE_VIDEO_IDS.search(page).group(1).split(",")[0:50]
@@ -64,7 +62,7 @@ def Videos(title, url, page=1):
 @route('/video/beeg/tags')
 def Tags(title):
 
-	oc = ObjectContainer(title2=title, view_group='List')
+	oc = ObjectContainer(title2=title)
 
 	for tag in HTML.ElementFromURL(BASE_URL).xpath('//a[contains(@href, "/tag/")]'):
 		title = tag.xpath('./text()')[0]

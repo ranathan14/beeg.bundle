@@ -56,16 +56,6 @@ def PlayVideo(url):
 	video = RE_VIDEO_URL.search(data)
 
 	if video:
-		oc = ObjectContainer(http_headers=HTTP_HEADERS)
-
-		oc.add(VideoClipObject(
-			items = [
-				MediaObject(
-					parts = [PartObject(key=video.group(1))]
-				)
-			]
-		))
-
-		return oc
+		return IndirectResponse(VideoClipObject, key=video.group(1))
 
 	raise Ex.MediaNotAvailable

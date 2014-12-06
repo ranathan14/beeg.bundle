@@ -1,56 +1,78 @@
+NAME = 'beeg'
+BASE_URL = 'http://beeg.com'
+SECTION_URL = 'http://beeg.com/section/%s/%%d/'
+TAG_URL = 'http://beeg.com/tag/%s/%%d/'
 THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
 THUMB_URL_ORIG = 'http://cdn.anythumb.com/236x177/%s.jpg'
-RE_VIDEO_URL = Regex("'file': '([^']+)'")
+
+ART = 'art-default.jpg'
+ICON = 'icon-default.jpg'
+
+RE_VIDEO_IDS = Regex('var tumbid.*=.*\[(.+?)\];')
+RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
 
 ####################################################################################################
-def NormalizeURL(url):
+def Start():
 
-	return url.split('?')[0].rstrip('/')
+	ObjectContainer.art = R(ART)
+	ObjectContainer.title1 = NAME
+	DirectoryObject.thumb = R(ICON)
 
-####################################################################################################
-def MetadataObjectForURL(url):
-
-	html = HTML.ElementFromURL(url)
-
-	title = html.xpath('//title/text()')[0].strip()
-	summary = html.xpath('//meta[@name="description"]/@content')[0].rsplit(' - free', 1)[0].strip()
-	thumb_1 = THUMB_URL % url.split('/')[-1]
-	thumb_2 = THUMB_URL_ORIG % url.split('/')[-1]
-
-	return VideoClipObject(
-		title = title,
-		summary = summary,
-		thumb = Resource.ContentsOfURLWithFallback([thumb_1, thumb_2], fallback='icon-default.jpg'),
-		content_rating = 'X'
-	)
+	HTTP.CacheTime = CACHE_1HOUR * 4
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.2.3 (KHTML, like Gecko) Version/8.0.1 Safari/600.2.3'
 
 ####################################################################################################
-def MediaObjectsForURL(url):
+@handler('/video/beeg', NAME, thumb=ICON, art=ART)
+def MainMenu():
 
-	return [
-		MediaObject(
-			container = Container.MP4,
-			video_codec = VideoCodec.H264,
-			video_resolution = '480',
-			audio_codec = AudioCodec.AAC,
-			audio_channels = 2,
-			optimized_for_streaming = True if Client.Product not in ['Plex Web'] else False,
-			parts = [
-				PartObject(
-					key = Callback(PlayVideo, url=url)
-				)
-			]
-		)
-	]
+	oc = ObjectContainer()
+
+	oc.add(DirectoryObject(
+		key = Callback(Videos, title='Browse All Videos', url=SECTION_URL % 'home'),
+		title = 'Browse All Videos'
+	))
+
+	oc.add(DirectoryObject(
+		key = Callback(Tags, title='Browse Videos by Tag'),
+		title = 'Browse Videos by Tag'
+	))
+
+	return oc
 
 ####################################################################################################
-@indirect
-def PlayVideo(url):
+@route('/video/beeg/videos', page=int)
+def Videos(title, url, page=1):
 
-	data = HTTP.Request(url).content
-	video = RE_VIDEO_URL.search(data)
+	oc = ObjectContainer(title2=title)
+	page = HTTP.Request(url % page).content
 
-	if video:
-		return IndirectResponse(VideoClipObject, key=video.group(1))
+	ids = RE_VIDEO_IDS.search(page).group(1).split(",")[0:50]
+	titles = RE_TITLES.search(page).group(1).strip("'").split("','")[0:50]
 
-	raise Ex.MediaNotAvailable
+	for i, id in enumerate(ids):
+		oc.add(VideoClipObject(
+			url = '%s/%s' % (BASE_URL, id),
+			title = titles[i].decode('string_escape'),
+			thumb = Resource.ContentsOfURLWithFallback([THUMB_URL % (id), THUMB_URL_ORIG % (id)], fallback='icon-default.jpg')
+		))
+
+	return oc
+
+####################################################################################################
+@route('/video/beeg/tags')
+def Tags(title):
+
+	oc = ObjectContainer(title2=title)
+
+	for tag in HTML.ElementFromURL(BASE_URL).xpath('//a[contains(@href, "/tag/")]'):
+		title = tag.xpath('./text()')[0]
+		href = tag.xpath('./@href')[0].split('/')[-1].replace('%', '%%')
+
+		oc.add(DirectoryObject(
+			key = Callback(Videos, title=title, url=TAG_URL % href),
+			title = title
+		))
+
+	oc.objects.sort(key=lambda obj: obj.title)
+
+	return oc

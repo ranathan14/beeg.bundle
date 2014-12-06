@@ -46,8 +46,8 @@ def Videos(title, url, page=1):
 	oc = ObjectContainer(title2=title)
 	page = HTTP.Request(url % page).content
 
-	ids = RE_VIDEO_IDS.search(page).group(1).split(",")[0:50]
-	titles = RE_TITLES.search(page).group(1).strip("'").split("','")[0:50]
+	ids = RE_VIDEO_IDS.search(page).group(1).split(",")
+	titles = RE_TITLES.search(page).group(1).strip("'").split("','")
 
 	for i, id in enumerate(ids):
 		oc.add(VideoClipObject(

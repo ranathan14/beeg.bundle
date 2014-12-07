@@ -1,6 +1,8 @@
 THUMB_URL = 'http://cdn.anythumb.com/640x360/%s.jpg'
 THUMB_URL_ORIG = 'http://cdn.anythumb.com/236x177/%s.jpg'
-RE_VIDEO_URL = Regex("'file': '([^']+)'")
+
+RE_VIDEO_720 = Regex("'720p': '([^']+)'")
+RE_VIDEO_480 = Regex("'480p': '([^']+)'")
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -31,13 +33,26 @@ def MediaObjectsForURL(url):
 		MediaObject(
 			container = Container.MP4,
 			video_codec = VideoCodec.H264,
+			video_resolution = '720',
+			audio_codec = AudioCodec.AAC,
+			audio_channels = 2,
+			optimized_for_streaming = True if Client.Product not in ['Plex Web'] else False,
+			parts = [
+				PartObject(
+					key = Callback(PlayVideo, url=url, res='720')
+				)
+			]
+		),
+		MediaObject(
+			container = Container.MP4,
+			video_codec = VideoCodec.H264,
 			video_resolution = '480',
 			audio_codec = AudioCodec.AAC,
 			audio_channels = 2,
 			optimized_for_streaming = True if Client.Product not in ['Plex Web'] else False,
 			parts = [
 				PartObject(
-					key = Callback(PlayVideo, url=url)
+					key = Callback(PlayVideo, url=url, res='480')
 				)
 			]
 		)
@@ -45,12 +60,13 @@ def MediaObjectsForURL(url):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url):
+def PlayVideo(url, res='720'):
 
 	data = HTTP.Request(url).content
-	video = RE_VIDEO_URL.search(data)
 
-	if video:
-		return IndirectResponse(VideoClipObject, key=video.group(1))
-
-	raise Ex.MediaNotAvailable
+	if res == '720' and RE_VIDEO_720.search(data):
+		return IndirectResponse(VideoClipObject, key=RE_VIDEO_720.search(data).group(1))
+	elif RE_VIDEO_480.search(data):
+		return IndirectResponse(VideoClipObject, key=RE_VIDEO_480.search(data).group(1))
+	else:
+		raise Ex.MediaNotAvailable

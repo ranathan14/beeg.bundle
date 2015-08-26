@@ -8,8 +8,8 @@ THUMB_URL_ORIG = 'http://cdn.anythumb.com/236x177/%s.jpg'
 ART = 'art-default.jpg'
 ICON = 'icon-default.jpg'
 
-RE_VIDEO_IDS = Regex('var tumbid.*=.*\[(.+?)\];')
-RE_TITLES = Regex('var tumbalt.*=.*\[(.+?)\];')
+RE_VIDEO_IDS = Regex('var tumb_id.*=.*\[(.+?)\];')
+RE_TITLES = Regex('var tumb_alt.*=.*\[(.+?)\];')
 
 ####################################################################################################
 def Start():
